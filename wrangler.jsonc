@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "picsee-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-05-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "PICSEE_API_BASE": "https://api.pics.ee",
+    "FALLBACK_ACCESS_TOKEN": "",
+    "OAUTH_AUTHORIZATION_SERVER": "https://chatgpt-integration.picsee.tw"
+  }
+  // To bind a custom domain such as mcp.picsee.io, add:
+  //   "routes": [
+  //     { "pattern": "mcp.picsee.io/*", "custom_domain": true }
+  //   ]
+}

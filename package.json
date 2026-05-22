@@ -1,0 +1,25 @@
+{
+  "name": "picsee-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Remote MCP server exposing the PicSee URL Shortener API.",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "start": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "typecheck": "tsc --noEmit",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.23.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250515.0",
+    "typescript": "^5.6.3",
+    "wrangler": "^4.0.0"
+  }
+}
