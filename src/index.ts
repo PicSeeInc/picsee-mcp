@@ -11,19 +11,31 @@ function isMcpPath(pathname: string): boolean {
   return pathname === MCP_BASE_PATH || pathname.startsWith(`${MCP_BASE_PATH}/`);
 }
 
+interface ResolvedToken {
+  token: string;
+  /**
+   * True when the request did not present its own Bearer token and we fell
+   * back to the env-configured shared token. Anonymous callers are restricted
+   * to a reduced tool surface (URL shortening only).
+   */
+  anonymous: boolean;
+}
+
 /**
  * Returns the Bearer token sent by the client, or `null` if none was provided
  * (and no fallback is configured). A non-null return — including the env
  * fallback — means "process the request"; null means "challenge for OAuth".
  */
-function extractAccessToken(request: Request, env: Env): string | null {
+function extractAccessToken(request: Request, env: Env): ResolvedToken | null {
   const auth = request.headers.get("Authorization");
   if (auth) {
     const m = /^Bearer\s+(.+)$/i.exec(auth.trim());
     const token = m?.[1]?.trim();
-    if (token) return token;
+    if (token) return { token, anonymous: false };
   }
-  if (env.FALLBACK_ACCESS_TOKEN) return env.FALLBACK_ACCESS_TOKEN;
+  if (env.FALLBACK_ACCESS_TOKEN) {
+    return { token: env.FALLBACK_ACCESS_TOKEN, anonymous: true };
+  }
   return null;
 }
 
@@ -63,16 +75,16 @@ function unauthorizedResponse(request: Request, description: string): Response {
   );
 }
 
-function createServer(env: Env, accessToken: string): McpServer {
+function createServer(env: Env, resolved: ResolvedToken): McpServer {
   const server = new McpServer({
     name: "PicSee Short Link MCP",
     version: "0.1.0",
   });
   const client = new PicSeeClient({
     baseUrl: env.PICSEE_API_BASE,
-    accessToken,
+    accessToken: resolved.token,
   });
-  registerTools(server, client);
+  registerTools(server, client, { anonymous: resolved.anonymous });
   return server;
 }
 

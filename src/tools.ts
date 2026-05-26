@@ -98,59 +98,24 @@ async function invoke<T>(fn: () => Promise<T>): Promise<CallToolResult> {
   }
 }
 
-export function registerTools(server: McpServer, client: PicSeeClient): void {
-  // ────────────────────────────────────────────
-  // Account
-  // ────────────────────────────────────────────
+export interface RegisterToolsOptions {
+  /**
+   * Anonymous callers (no Bearer token; using the env fallback token) are
+   * restricted to `create_short_link` only — every other tool would read or
+   * mutate the shared fallback account on behalf of unrelated visitors.
+   */
+  anonymous?: boolean;
+}
 
-  server.tool(
-    "get_api_status",
-    "Return the calling account's API plan, lifetime quota, current period usage, and the plan expiration date. Use this before bulk operations to confirm there is remaining quota, or when the user asks about their PicSee plan.",
-    {},
-    async () => invoke(() => client.getApiStatus()),
-  );
-
-  server.tool(
-    "get_api_usage_by_external_id",
-    "Return the number of API-created short links grouped by `externalId` over a time window (default last 30 days, max 31-day range). Useful for attributing API usage to specific campaigns / clients.",
-    {
-      startTime: z
-        .string()
-        .optional()
-        .describe(
-          `Range start. ${TIME_FORMAT_HINT} Defaults to 30 days before endTime.`,
-        ),
-      endTime: z
-        .string()
-        .optional()
-        .describe(`Range end. ${TIME_FORMAT_HINT} Defaults to the current hour.`),
-    },
-    async (args) => invoke(() => client.getApiUsageByExternalId(args)),
-  );
-
-  server.tool(
-    "get_my_domains",
-    "List every short-link domain available to the account: brand short domains (BSDs) owned by the account, PicSee subdomains, and the shared root domain. Each entry flags HTTPS support and whether it is the account default. Call this before `create_short_link` if the user wants to pick a non-default domain.",
-    {},
-    async () => invoke(() => client.getDomains()),
-  );
-
-  server.tool(
-    "get_my_tags",
-    "List tag id + name pairs previously created on the account. The `name` values are the strings accepted by the `tags` array on `create_short_link` / `edit_short_link`. Call this to offer the user a tag picker instead of asking them to retype tag names.",
-    {},
-    async () => invoke(() => client.getTags()),
-  );
-
-  server.tool(
-    "get_my_tracking_tools",
-    "List previously-used UTM sources / mediums and saved Meta Pixels + Google Tag Manager containers on the account. Use this to populate dropdowns when assembling tracking parameters for a new short link, rather than having the user retype IDs.",
-    {},
-    async () => invoke(() => client.getTrackingTools()),
-  );
+export function registerTools(
+  server: McpServer,
+  client: PicSeeClient,
+  options: RegisterToolsOptions = {},
+): void {
+  const { anonymous = false } = options;
 
   // ────────────────────────────────────────────
-  // Short Link CRUD
+  // Short Link creation — available to anonymous callers
   // ────────────────────────────────────────────
 
   server.tool(
@@ -231,6 +196,62 @@ export function registerTools(server: McpServer, client: PicSeeClient): void {
     },
     async (args) => invoke(() => client.createLink(args)),
   );
+
+  if (anonymous) return;
+
+  // ────────────────────────────────────────────
+  // Account
+  // ────────────────────────────────────────────
+
+  server.tool(
+    "get_api_status",
+    "Return the calling account's API plan, lifetime quota, current period usage, and the plan expiration date. Use this before bulk operations to confirm there is remaining quota, or when the user asks about their PicSee plan.",
+    {},
+    async () => invoke(() => client.getApiStatus()),
+  );
+
+  server.tool(
+    "get_api_usage_by_external_id",
+    "Return the number of API-created short links grouped by `externalId` over a time window (default last 30 days, max 31-day range). Useful for attributing API usage to specific campaigns / clients.",
+    {
+      startTime: z
+        .string()
+        .optional()
+        .describe(
+          `Range start. ${TIME_FORMAT_HINT} Defaults to 30 days before endTime.`,
+        ),
+      endTime: z
+        .string()
+        .optional()
+        .describe(`Range end. ${TIME_FORMAT_HINT} Defaults to the current hour.`),
+    },
+    async (args) => invoke(() => client.getApiUsageByExternalId(args)),
+  );
+
+  server.tool(
+    "get_my_domains",
+    "List every short-link domain available to the account: brand short domains (BSDs) owned by the account, PicSee subdomains, and the shared root domain. Each entry flags HTTPS support and whether it is the account default. Call this before `create_short_link` if the user wants to pick a non-default domain.",
+    {},
+    async () => invoke(() => client.getDomains()),
+  );
+
+  server.tool(
+    "get_my_tags",
+    "List tag id + name pairs previously created on the account. The `name` values are the strings accepted by the `tags` array on `create_short_link` / `edit_short_link`. Call this to offer the user a tag picker instead of asking them to retype tag names.",
+    {},
+    async () => invoke(() => client.getTags()),
+  );
+
+  server.tool(
+    "get_my_tracking_tools",
+    "List previously-used UTM sources / mediums and saved Meta Pixels + Google Tag Manager containers on the account. Use this to populate dropdowns when assembling tracking parameters for a new short link, rather than having the user retype IDs.",
+    {},
+    async () => invoke(() => client.getTrackingTools()),
+  );
+
+  // ────────────────────────────────────────────
+  // Short Link CRUD
+  // ────────────────────────────────────────────
 
   server.tool(
     "list_short_links",
