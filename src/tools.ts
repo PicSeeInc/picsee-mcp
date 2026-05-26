@@ -98,11 +98,16 @@ async function invoke<T>(fn: () => Promise<T>): Promise<CallToolResult> {
   }
 }
 
+const ANONYMOUS_DOMAIN = "pse.is";
+
 export interface RegisterToolsOptions {
   /**
    * Anonymous callers (no Bearer token; using the env fallback token) are
    * restricted to `create_short_link` only — every other tool would read or
-   * mutate the shared fallback account on behalf of unrelated visitors.
+   * mutate the shared fallback account on behalf of unrelated visitors. They
+   * are additionally pinned to the shared `pse.is` domain — brand short
+   * domains belong to authenticated accounts and must not be issued to
+   * unrelated visitors.
    */
   anonymous?: boolean;
 }
@@ -118,9 +123,13 @@ export function registerTools(
   // Short Link creation — available to anonymous callers
   // ────────────────────────────────────────────
 
+  const createLinkDescription = anonymous
+    ? `Create a new PicSee short link from a destination URL. \`url\` is required; every other field is optional. Anonymous callers are pinned to the \`${ANONYMOUS_DOMAIN}\` domain — any \`domain\` value supplied is ignored. Advanced-plan-only fields are marked in their description — if the caller is on a Free / Basic plan, PicSee will return error \`PUB00201\`. The response contains \`picseeUrl\`, the shortened link ready to share.`
+    : "Create a new PicSee short link from a destination URL. `url` is required; every other field is optional. Advanced-plan-only fields are marked in their description — if the caller is on a Free / Basic plan, PicSee will return error `PUB00201`. The response contains `picseeUrl`, the shortened link ready to share.";
+
   server.tool(
     "create_short_link",
-    "Create a new PicSee short link from a destination URL. `url` is required; every other field is optional. Advanced-plan-only fields are marked in their description — if the caller is on a Free / Basic plan, PicSee will return error `PUB00201`. The response contains `picseeUrl`, the shortened link ready to share.",
+    createLinkDescription,
     {
       url: z
         .string()
@@ -194,7 +203,12 @@ export function registerTools(
         .optional()
         .describe("Path Parameterization config (paid Advanced add-on)."),
     },
-    async (args) => invoke(() => client.createLink(args)),
+    async (args) =>
+      invoke(() =>
+        client.createLink(
+          anonymous ? { ...args, domain: ANONYMOUS_DOMAIN } : args,
+        ),
+      ),
   );
 
   if (anonymous) return;
