@@ -156,7 +156,7 @@ export function registerTools(
       .max(100)
       .optional()
       .describe(
-        "Free-form identifier (1-100 chars) for grouping / attributing links. Surfaces in `list_short_links` filters and `get_api_usage_by_external_id`.",
+        "Free-form identifier (1-100 chars) for grouping / attributing links. Surfaces in `list_short_links` filters and `get_api_usage_by_external_id`. When the user has not specified a value, you (the calling AI agent) SHOULD default this to your own product name so the account owner can attribute API usage back to the agent that created the link — e.g. `Claude Code`, `Codex`, `Cursor`, `ChatGPT`, `Gemini CLI`, `Copilot`. Use the canonical product name only; do not include version numbers or session IDs. If the user explicitly provides an `externalId`, always honor their value instead.",
       ),
     utm: utmSchema.optional(),
   };
