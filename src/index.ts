@@ -4,8 +4,12 @@ import { PicSeeClient } from "./picsee-client.ts";
 import { registerTools } from "./tools.ts";
 import { FetchTransport } from "./transport.ts";
 
-const MCP_PATHS = new Set(["/v1", "/v1/", "/mcp", "/mcp/"]);
+const MCP_BASE_PATH = "/mcp";
 const RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource";
+
+function isMcpPath(pathname: string): boolean {
+  return pathname === MCP_BASE_PATH || pathname.startsWith(`${MCP_BASE_PATH}/`);
+}
 
 /**
  * Returns the Bearer token sent by the client, or `null` if none was provided
@@ -30,7 +34,10 @@ function resourceMetadataUrl(request: Request): string {
 
 function buildResourceMetadata(request: Request, env: Env): Record<string, unknown> {
   const u = new URL(request.url);
-  const resource = `${u.protocol}//${u.host}`;
+  // Per RFC 8707, the resource identifier is the canonical URI of the MCP
+  // endpoint — not just the host — so clients (Claude, etc.) bind their
+  // access tokens to this exact endpoint.
+  const resource = `${u.protocol}//${u.host}${MCP_BASE_PATH}`;
   return {
     resource,
     authorization_servers: [env.OAUTH_AUTHORIZATION_SERVER],
@@ -151,18 +158,6 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === "/" || url.pathname === "/health") {
-      return jsonResponse({
-        name: "picsee-mcp",
-        status: "ok",
-        transport: "streamable-http (stateless)",
-        endpoints: {
-          mcp: "/v1",
-          resourceMetadata: RESOURCE_METADATA_PATH,
-        },
-      });
-    }
-
     // RFC 9728 OAuth 2.0 Protected Resource Metadata. MCP clients fetch this
     // (URL discovered via the WWW-Authenticate header on a 401) to learn
     // which Authorization Server they should redirect the user to.
@@ -170,7 +165,7 @@ export default {
       return jsonResponse(buildResourceMetadata(request, env));
     }
 
-    if (MCP_PATHS.has(url.pathname)) {
+    if (isMcpPath(url.pathname)) {
       return handleMcpRequest(request, env);
     }
 
