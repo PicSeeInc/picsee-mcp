@@ -1,6 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
-import { PicSeeClient } from "./picsee-client.ts";
+import {
+  PicSeeClient,
+  parsePlanTier,
+  type PicSeePlanTier,
+} from "./picsee-client.ts";
 import { registerTools } from "./tools.ts";
 import { FetchTransport } from "./transport.ts";
 
@@ -75,7 +79,28 @@ function unauthorizedResponse(request: Request, description: string): Response {
   );
 }
 
-function createServer(env: Env, resolved: ResolvedToken): McpServer {
+/**
+ * For authenticated callers, probe `GET /v2/my/api/status` so we can hide
+ * Advanced-only tools from Free / Basic accounts (avoids the model burning
+ * tokens on calls that would just return `PUB00201`). Failures fall back to
+ * `free` — strictly fewer tools is the safer default than over-exposing.
+ */
+async function detectTier(
+  client: PicSeeClient,
+  resolved: ResolvedToken,
+): Promise<PicSeePlanTier> {
+  if (resolved.anonymous) return "anonymous";
+  try {
+    return parsePlanTier(await client.getApiStatus());
+  } catch {
+    return "free";
+  }
+}
+
+async function createServer(
+  env: Env,
+  resolved: ResolvedToken,
+): Promise<McpServer> {
   const server = new McpServer({
     name: "PicSee Short Link MCP",
     version: "0.1.0",
@@ -84,7 +109,8 @@ function createServer(env: Env, resolved: ResolvedToken): McpServer {
     baseUrl: env.PICSEE_API_BASE,
     accessToken: resolved.token,
   });
-  registerTools(server, client, { anonymous: resolved.anonymous });
+  const tier = await detectTier(client, resolved);
+  registerTools(server, client, { tier });
   return server;
 }
 
@@ -143,7 +169,7 @@ async function handleMcpRequest(
     return jsonResponse(rpcError(null, -32600, "Invalid Request"), 400);
   }
 
-  const server = createServer(env, accessToken);
+  const server = await createServer(env, accessToken);
   const transport = new FetchTransport();
   await server.connect(transport);
 
