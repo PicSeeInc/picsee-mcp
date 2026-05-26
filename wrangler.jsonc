@@ -9,7 +9,7 @@
   },
   "vars": {
     "PICSEE_API_BASE": "https://api.pics.ee",
-    "OAUTH_AUTHORIZATION_SERVER": "https://chatgpt-integration.picsee.tw"
+    "OAUTH_AUTHORIZATION_SERVER": "https://public-api-oauth.picsee.io"
   }
   // `FALLBACK_ACCESS_TOKEN` is a Worker secret (sensitive shared anonymous
   // token). Set it per environment with:
