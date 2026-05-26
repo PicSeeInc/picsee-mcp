@@ -4,9 +4,16 @@
   "main": "src/index.ts",
   "compatibility_date": "2025-05-01",
   "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
   "observability": {
     "enabled": true
   },
+  "routes": [
+    { "pattern": "api.picsee.io/mcp/*", "zone_name": "picsee.io" },
+    { "pattern": "api.picsee.io/mcp", "zone_name": "picsee.io" },
+    { "pattern": "api.picsee.io/.well-known/oauth-protected-resource", "zone_name": "picsee.io" }
+  ],
   "vars": {
     "PICSEE_API_BASE": "https://api.pics.ee",
     "OAUTH_AUTHORIZATION_SERVER": "https://public-api-oauth.picsee.io"
@@ -17,8 +24,4 @@
   // For local dev, put it in `.dev.vars` (already gitignored):
   //   FALLBACK_ACCESS_TOKEN=...
   // Leave the secret unset to disable anonymous mode and force OAuth.
-  // To bind a custom domain such as mcp.picsee.io, add:
-  //   "routes": [
-  //     { "pattern": "mcp.picsee.io/*", "custom_domain": true }
-  //   ]
 }
