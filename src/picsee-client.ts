@@ -37,20 +37,18 @@ export interface PicSeeClientOptions {
 export type PicSeePlanTier = "anonymous" | "free" | "advanced";
 
 /**
- * Best-effort parser for the plan field on `GET /v2/my/api/status`. We don't
- * have a hard-typed response, so we walk common shapes and fall back to
- * `free` (the safer default — anything Advanced-gated still fails clearly
- * via `PUB00201` if we got it wrong, and we never accidentally expose paid
- * features).
+ * Parses the plan tier from `GET /v2/my/api/status`. The response shape is
+ * `{ data: { planName: "free" | "advanced" | ... } }`. Falls back to `free`
+ * on any unrecognized shape — the safer default, since Advanced-gated calls
+ * still fail clearly via `PUB00201` and we never accidentally expose paid
+ * features.
  */
 export function parsePlanTier(apiStatus: unknown): PicSeePlanTier {
   if (apiStatus && typeof apiStatus === "object") {
-    const obj = apiStatus as Record<string, unknown>;
-    const candidates = [obj.plan, obj.apiPlan, obj.type, obj.level];
-    for (const c of candidates) {
-      if (typeof c === "string" && c.toLowerCase().includes("advanced")) {
-        return "advanced";
-      }
+    const data = (apiStatus as { data?: unknown }).data;
+    const planName = (data as { planName?: unknown } | undefined)?.planName;
+    if (typeof planName === "string" && planName.toLowerCase().includes("advanced")) {
+      return "advanced";
     }
   }
   return "free";
