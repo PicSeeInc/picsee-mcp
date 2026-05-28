@@ -9,10 +9,19 @@ import { registerTools } from "./tools.ts";
 import { FetchTransport } from "./transport.ts";
 
 const MCP_BASE_PATH = "/mcp";
+const MCP_AUTH_PATH = "/mcp/auth";
 const RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource";
+const RESOURCE_METADATA_AUTH_PATH = "/.well-known/oauth-protected-resource/mcp/auth";
 
 function isMcpPath(pathname: string): boolean {
   return pathname === MCP_BASE_PATH || pathname.startsWith(`${MCP_BASE_PATH}/`);
+}
+
+// `/mcp/auth` is the OAuth-only endpoint: anonymous fallback is never used,
+// so missing-Bearer requests always 401 and clients are forced through the
+// OAuth flow. `/mcp` keeps the anonymous fallback when configured.
+function requiresOAuth(pathname: string): boolean {
+  return pathname === MCP_AUTH_PATH;
 }
 
 interface ResolvedToken {
@@ -30,30 +39,42 @@ interface ResolvedToken {
  * (and no fallback is configured). A non-null return — including the env
  * fallback — means "process the request"; null means "challenge for OAuth".
  */
-function extractAccessToken(request: Request, env: Env): ResolvedToken | null {
+function extractAccessToken(
+  request: Request,
+  env: Env,
+  allowFallback: boolean,
+): ResolvedToken | null {
   const auth = request.headers.get("Authorization");
   if (auth) {
     const m = /^Bearer\s+(.+)$/i.exec(auth.trim());
     const token = m?.[1]?.trim();
     if (token) return { token, anonymous: false };
   }
-  if (env.FALLBACK_ACCESS_TOKEN) {
+  if (allowFallback && env.FALLBACK_ACCESS_TOKEN) {
     return { token: env.FALLBACK_ACCESS_TOKEN, anonymous: true };
   }
   return null;
 }
 
-function resourceMetadataUrl(request: Request): string {
+function resourceMetadataUrl(request: Request, resourcePath: string): string {
   const u = new URL(request.url);
-  return `${u.protocol}//${u.host}${RESOURCE_METADATA_PATH}`;
+  const metadataPath =
+    resourcePath === MCP_AUTH_PATH
+      ? RESOURCE_METADATA_AUTH_PATH
+      : RESOURCE_METADATA_PATH;
+  return `${u.protocol}//${u.host}${metadataPath}`;
 }
 
-function buildResourceMetadata(request: Request, env: Env): Record<string, unknown> {
+function buildResourceMetadata(
+  request: Request,
+  env: Env,
+  resourcePath: string,
+): Record<string, unknown> {
   const u = new URL(request.url);
   // Per RFC 8707, the resource identifier is the canonical URI of the MCP
   // endpoint — not just the host — so clients (Claude, etc.) bind their
   // access tokens to this exact endpoint.
-  const resource = `${u.protocol}//${u.host}${MCP_BASE_PATH}`;
+  const resource = `${u.protocol}//${u.host}${resourcePath}`;
   return {
     resource,
     authorization_servers: [env.OAUTH_AUTHORIZATION_SERVER],
@@ -63,10 +84,14 @@ function buildResourceMetadata(request: Request, env: Env): Record<string, unkno
   };
 }
 
-function unauthorizedResponse(request: Request, description: string): Response {
+function unauthorizedResponse(
+  request: Request,
+  resourcePath: string,
+  description: string,
+): Response {
   // RFC 9728 / MCP spec: surface the resource-metadata URL so the client can
   // discover which Authorization Server to use for the OAuth flow.
-  const wwwAuthenticate = `Bearer realm="picsee-mcp", error="invalid_token", error_description="${description}", resource_metadata="${resourceMetadataUrl(request)}"`;
+  const wwwAuthenticate = `Bearer realm="picsee-mcp", error="invalid_token", error_description="${description}", resource_metadata="${resourceMetadataUrl(request, resourcePath)}"`;
   return new Response(
     JSON.stringify({ error: "invalid_token", error_description: description }),
     {
@@ -147,10 +172,16 @@ async function handleMcpRequest(
     });
   }
 
-  const accessToken = extractAccessToken(request, env);
+  const url = new URL(request.url);
+  const resourcePath = requiresOAuth(url.pathname)
+    ? MCP_AUTH_PATH
+    : MCP_BASE_PATH;
+  const allowFallback = !requiresOAuth(url.pathname);
+  const accessToken = extractAccessToken(request, env, allowFallback);
   if (accessToken === null) {
     return unauthorizedResponse(
       request,
+      resourcePath,
       "Bearer access token required. Obtain one from the OAuth authorization server.",
     );
   }
@@ -200,7 +231,10 @@ export default {
     // (URL discovered via the WWW-Authenticate header on a 401) to learn
     // which Authorization Server they should redirect the user to.
     if (url.pathname === RESOURCE_METADATA_PATH) {
-      return jsonResponse(buildResourceMetadata(request, env));
+      return jsonResponse(buildResourceMetadata(request, env, MCP_BASE_PATH));
+    }
+    if (url.pathname === RESOURCE_METADATA_AUTH_PATH) {
+      return jsonResponse(buildResourceMetadata(request, env, MCP_AUTH_PATH));
     }
 
     if (isMcpPath(url.pathname)) {

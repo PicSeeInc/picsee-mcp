@@ -12,7 +12,8 @@
   "routes": [
     { "pattern": "api.picsee.io/mcp/*", "zone_name": "picsee.io" },
     { "pattern": "api.picsee.io/mcp", "zone_name": "picsee.io" },
-    { "pattern": "api.picsee.io/.well-known/oauth-protected-resource", "zone_name": "picsee.io" }
+    { "pattern": "api.picsee.io/.well-known/oauth-protected-resource", "zone_name": "picsee.io" },
+    { "pattern": "api.picsee.io/.well-known/oauth-protected-resource/mcp/auth", "zone_name": "picsee.io" }
   ],
   "vars": {
     "PICSEE_API_BASE": "https://api.pics.ee",
