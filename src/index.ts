@@ -223,24 +223,37 @@ async function handleMcpRequest(
   return jsonResponse(responseBody);
 }
 
+/**
+ * Runtime-agnostic request router. Both the Cloudflare Worker entrypoint
+ * (`export default { fetch }`) and the AWS Lambda adapter (`src/lambda.ts`)
+ * call into this with a standard Web `Request` and an `Env` bag — the only
+ * thing that differs between platforms is how those two are sourced.
+ */
+export async function handleRequest(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  const url = new URL(request.url);
+
+  // RFC 9728 OAuth 2.0 Protected Resource Metadata. MCP clients fetch this
+  // (URL discovered via the WWW-Authenticate header on a 401) to learn
+  // which Authorization Server they should redirect the user to.
+  if (url.pathname === RESOURCE_METADATA_PATH) {
+    return jsonResponse(buildResourceMetadata(request, env, MCP_BASE_PATH));
+  }
+  if (url.pathname === RESOURCE_METADATA_AUTH_PATH) {
+    return jsonResponse(buildResourceMetadata(request, env, MCP_AUTH_PATH));
+  }
+
+  if (isMcpPath(url.pathname)) {
+    return handleMcpRequest(request, env);
+  }
+
+  return new Response("Not found", { status: 404 });
+}
+
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-
-    // RFC 9728 OAuth 2.0 Protected Resource Metadata. MCP clients fetch this
-    // (URL discovered via the WWW-Authenticate header on a 401) to learn
-    // which Authorization Server they should redirect the user to.
-    if (url.pathname === RESOURCE_METADATA_PATH) {
-      return jsonResponse(buildResourceMetadata(request, env, MCP_BASE_PATH));
-    }
-    if (url.pathname === RESOURCE_METADATA_AUTH_PATH) {
-      return jsonResponse(buildResourceMetadata(request, env, MCP_AUTH_PATH));
-    }
-
-    if (isMcpPath(url.pathname)) {
-      return handleMcpRequest(request, env);
-    }
-
-    return new Response("Not found", { status: 404 });
+  fetch(request: Request, env: Env): Promise<Response> {
+    return handleRequest(request, env);
   },
 };

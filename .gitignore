@@ -1,6 +1,8 @@
 node_modules/
 .wrangler/
 dist/
+.aws-sam/
+samconfig.toml
 .dev.vars
 .dev.vars.*
 *.log

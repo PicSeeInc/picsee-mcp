@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: PicSee MCP server (Streamable HTTP) on AWS Lambda.
+
+Parameters:
+  FallbackAccessToken:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: >-
+      Shared anonymous-mode token. Leave empty to disable anonymous mode and
+      force OAuth (unauthenticated callers get a 401 / OAuth challenge).
+  PicseeApiBase:
+    Type: String
+    Default: https://api.pics.ee
+  OauthAuthorizationServer:
+    Type: String
+    Default: https://public-api-oauth.picsee.io
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: nodejs24.x
+    Architectures:
+      - arm64
+
+Resources:
+  PicseeMcpFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      # `sam build` bundles src/lambda.ts with esbuild into a single
+      # self-contained lambda.mjs (no node_modules shipped).
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: node24
+        Format: esm
+        # Emit .mjs so the Lambda runtime loads the bundle as ESM. Without this
+        # the output is lambda.js, which — with no package.json in the artifact
+        # — Lambda would parse as CommonJS and choke on the `export` statement.
+        OutExtension:
+          - .js=.mjs
+        EntryPoints:
+          - src/lambda.ts
+    Properties:
+      FunctionName: picsee-mcp
+      Handler: lambda.handler
+      CodeUri: .
+      # A Lambda Function URL gives the MCP server an HTTPS endpoint with no
+      # API Gateway in front. AuthType NONE because the MCP layer does its own
+      # OAuth 2.1 / Bearer auth — do NOT use IAM auth here.
+      FunctionUrlConfig:
+        AuthType: NONE
+      Environment:
+        Variables:
+          PICSEE_API_BASE: !Ref PicseeApiBase
+          OAUTH_AUTHORIZATION_SERVER: !Ref OauthAuthorizationServer
+          FALLBACK_ACCESS_TOKEN: !Ref FallbackAccessToken
+
+Outputs:
+  FunctionUrl:
+    Description: Public HTTPS endpoint — point your MCP route(s) here.
+    Value: !GetAtt PicseeMcpFunctionUrl.FunctionUrl
+  FunctionName:
+    Value: !Ref PicseeMcpFunction

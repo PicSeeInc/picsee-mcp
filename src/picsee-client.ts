@@ -95,7 +95,7 @@ export class PicSeeClient {
       Authorization: `Bearer ${this.accessToken}`,
       "User-Agent": this.userAgent,
     };
-    let body: BodyInit | undefined;
+    let body: string | undefined;
     if (init?.body !== undefined) {
       headers["Content-Type"] = "application/json";
       body = JSON.stringify(init.body);
