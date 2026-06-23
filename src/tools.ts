@@ -279,7 +279,7 @@ export function registerTools(
     "get_my_tags",
     {
       description:
-        "List tag id + name pairs previously created on the account. The `name` values are the strings accepted by the `tags` array on `create_short_link` / `edit_short_link`. Call this to offer the user a tag picker instead of asking them to retype tag names.",
+        "List the account's previously-created tags as `{ id, value }` pairs. The `value` strings are exactly what the `tags` array on `create_short_link` / `edit_short_link` accepts. Call this to offer the user a tag picker instead of asking them to retype tag names.",
     },
     async () => invoke(() => client.getTags()),
   );
