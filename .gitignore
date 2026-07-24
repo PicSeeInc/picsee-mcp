@@ -7,3 +7,6 @@ samconfig.toml
 .dev.vars.*
 *.log
 .DS_Store
+
+# MCP Registry domain-auth private key — never commit
+key.pem
