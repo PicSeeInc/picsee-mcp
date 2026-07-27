@@ -131,7 +131,7 @@ When reporting an issue, include the MCP client name, operation attempted, times
 
 Prerequisites:
 
-- Node.js 20 or later
+- Node.js 22 or later
 - pnpm
 
 ```bash
