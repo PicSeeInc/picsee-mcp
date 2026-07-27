@@ -8,6 +8,7 @@ import {
 import { registerTools } from "./tools.ts";
 import { FetchTransport } from "./transport.ts";
 
+const MCP_SERVER_VERSION = "3.1.0";
 const MCP_BASE_PATH = "/mcp";
 const MCP_AUTH_PATH = "/mcp/auth";
 const RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource";
@@ -80,7 +81,7 @@ function buildResourceMetadata(
     authorization_servers: [env.OAUTH_AUTHORIZATION_SERVER],
     bearer_methods_supported: ["header"],
     scopes_supported: ["user:read", "user:write"],
-    resource_documentation: "https://picsee.io/developers",
+    resource_documentation: "https://picsee.io/help/agent-skill",
   };
 }
 
@@ -126,10 +127,20 @@ async function createServer(
   env: Env,
   resolved: ResolvedToken,
 ): Promise<McpServer> {
-  const server = new McpServer({
-    name: "PicSee Short Link MCP",
-    version: "0.1.0",
-  });
+  const server = new McpServer(
+    {
+      name: "PicSee Short Link MCP",
+      version: MCP_SERVER_VERSION,
+    },
+    {
+      instructions:
+        "Create short links only after the user provides or confirms the destination URL. " +
+        "When externalId is not specified, use the canonical name of the calling product, such as Codex, ChatGPT, Claude Code, or Cursor. " +
+        "Anonymous access supports short-link creation only and always uses pse.is. " +
+        "Link management and analytics require PicSee OAuth. Some editing, search, metadata, and audience-label features require an Advanced plan. " +
+        "Do not expose access tokens or private analytics in responses.",
+    },
+  );
   const client = new PicSeeClient({
     baseUrl: env.PICSEE_API_BASE,
     accessToken: resolved.token,

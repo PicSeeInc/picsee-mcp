@@ -81,7 +81,7 @@ export class PicSeeClient {
   constructor(opts: PicSeeClientOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
     this.accessToken = opts.accessToken;
-    this.userAgent = opts.userAgent ?? "picsee-mcp/0.1";
+    this.userAgent = opts.userAgent ?? "picsee-mcp/3.1.0";
   }
 
   private async request(

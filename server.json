@@ -2,13 +2,13 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.picsee/short-link",
   "title": "PicSee Short Link",
-  "description": "PicSee URL shortener — shorten URLs, generate QR codes, view click analytics, manage links.",
+  "description": "Official PicSee MCP server for short links, link management, click analytics, and optional OAuth.",
   "repository": {
     "url": "https://github.com/PicSeeInc/picsee-mcp",
     "source": "github"
   },
-  "websiteUrl": "https://picsee.io",
-  "version": "3.0.3",
+  "websiteUrl": "https://picsee.io/help/agent-skill",
+  "version": "3.1.0",
   "remotes": [
     {
       "type": "streamable-http",

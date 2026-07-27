@@ -1,0 +1,57 @@
+name: Publish MCP metadata
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  validate-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate
+        run: pnpm check
+
+      - name: Verify tag matches release version
+        run: |
+          EXPECTED="v$(node -p "require('./package.json').version")"
+          test "$GITHUB_REF_NAME" = "$EXPECTED" || {
+            echo "Tag $GITHUB_REF_NAME does not match $EXPECTED"
+            exit 1
+          }
+
+      - name: Install mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" \
+            | tar xz mcp-publisher
+
+      # The PicSee DNS apex must contain the public-key TXT record expected by
+      # mcp-publisher. Store only the corresponding private key as a GitHub
+      # Actions secret; never commit it or include it in build artifacts.
+      - name: Authenticate to MCP Registry
+        run: |
+          ./mcp-publisher login dns \
+            --domain picsee.io \
+            --private-key "$MCP_REGISTRY_PRIVATE_KEY"
+        env:
+          MCP_REGISTRY_PRIVATE_KEY: ${{ secrets.MCP_REGISTRY_PRIVATE_KEY }}
+
+      - name: Publish to Official MCP Registry
+        run: ./mcp-publisher publish

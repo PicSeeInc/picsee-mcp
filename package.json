@@ -1,8 +1,17 @@
 {
   "name": "picsee-mcp",
-  "version": "0.1.0",
+  "version": "3.1.0",
   "private": true,
-  "description": "Remote MCP server exposing the PicSee URL Shortener API.",
+  "description": "Official remote MCP server for PicSee URL shortening, link management, and click analytics.",
+  "license": "MIT",
+  "homepage": "https://picsee.io/help/agent-skill",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PicSeeInc/picsee-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/PicSeeInc/picsee-mcp/issues"
+  },
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
@@ -11,6 +20,8 @@
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
     "typecheck": "tsc --noEmit",
+    "check:version": "node scripts/check-version.mjs",
+    "check": "pnpm typecheck && pnpm check:version",
     "cf-typegen": "wrangler types",
     "lambda:bundle": "esbuild src/lambda.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/lambda.mjs",
     "lambda:build": "sam build",
